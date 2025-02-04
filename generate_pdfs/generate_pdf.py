@@ -11,7 +11,7 @@ from glob import glob
 
 def register_fonts():
     # Register Hebrew fonts
-    font_files = glob(r"C:\Users\sgala\PycharmProjects\OCR\generate_pdfs\fonts\*.ttf")
+    font_files = glob(r"C:\Users\sgala\PycharmProjects\OCR\OCR\generate_pdfs\fonts\*.ttf")
     font_files = {e.split('\\')[-1].removesuffix(".ttf"):e for e in font_files}
     for font_name, font_path in font_files.items():
         pdfmetrics.registerFont(TTFont(font_name, font_path))
@@ -61,4 +61,7 @@ def pdf_to_image(pdf_path, output_image_path):
     images = convert_from_path(pdf_path)
     for i, image in enumerate(images):
         image.save(f"{output_image_path}_{i}.png", "PNG")
-
+if __name__=="__main__":
+    fonts = register_fonts()
+    for f in fonts.keys():
+        generate_pdf(f"{f}.pdf", f, ["עובד"], num_lines=20)
