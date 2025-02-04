@@ -8,22 +8,6 @@ import os
 import re
 from PIL import Image
 
-import unicodedata
-
-
-def remove_hebrew_diacritics(text):
-    """Remove Hebrew diacritical marks (Nikud) from text."""
-    text = unicodedata.normalize("NFKD", text)  # Decompose characters
-    return re.sub(r"[\u0591-\u05C7]", "", text)  # Remove diacritics
-
-
-def clean_text(text):
-    text = remove_hebrew_diacritics(text)  # Remove diacritics
-    text = ''.join(char for char in text if unicodedata.category(char)[0] != 'C')  # Remove control characters
-    text = re.sub(r"�+", "", text)  # Remove repeated unknown characters (�)
-    text = re.sub(r"\s+", "", text)  # Replace multiple spaces/tabs/newlines with a single space
-    return text.strip()  # Trim leading/trailing spaces
-
 
 def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delimiters=[" ", "\n"]):
     pdf_name = pdf_file.split('\\')[-1].removesuffix('.pdf')
@@ -42,7 +26,7 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
 
         # 1. Extract full text and split it with delimiters
         full_text = page.get_text("text")
-        expected_words = [clean_text(word) for word in delimiters_pattern.split(full_text) if word.strip()]
+        expected_words = [word.strip() for word in delimiters_pattern.split(full_text) if word.strip()]
 
         # 2. Extract words with bounding boxes
         extracted_words = page.get_text("words")
@@ -69,9 +53,6 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
 
             target_word = expected_words[expected_index]
 
-            word = clean_text(word)
-            target_word = clean_text(target_word)
-
             # Build current composite word and expand bounding box
             if not current_word:
                 current_word = word
@@ -94,6 +75,7 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
                 current_word = ""
                 current_bbox = None
                 expected_index += 1
+
 
         # Ensure all expected words were matched
         if current_word:
@@ -183,7 +165,7 @@ def process_pdf_to_images_and_data_(pdf_file, dpi=300, output_dir="output"):
 
 
 if __name__ == "__main__":
-    pdf_path = r"D:\Projects\OCR\beni_goren.pdf"
-    output_dir = r"D:\Projects\OCR\beni_goren_test_data_example"
+    pdf_path = r"C:\Users\sgala\OCR\pipeline\random_pdfs\text_92.pdf"
+    output_dir = r"C:\Users\sgala\OCR\tesseract_test_data_example"
     # Example Usage
     process_pdf_to_images_and_data(pdf_path, dpi=300, output_dir=output_dir)
