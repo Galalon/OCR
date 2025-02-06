@@ -52,6 +52,8 @@ def match_predictions_to_gt(pred_text, pred_bboxes, gt_text, gt_bboxes, confiden
             bbox_area = lambda x: max((x[2] - x[0]), 0) * max((x[3] - x[1]), 0)
             intersect_ratio = max(bbox_area(intersect) / bbox_area(pred_bbox),
                                   bbox_area(intersect) / bbox_area(gt_bbox))
+            if bbox_area(intersect) / bbox_area(pred_bbox) < 0.01:
+                continue
             if intersect_ratio > intersect_threshold:
                 # matchings.append((pred_text[pred_i],pred_bbox,gt_text[gt_i],gt_bbox,intersect_ratio))
                 matchings.append((pred_i, gt_i))
@@ -93,7 +95,7 @@ def match_predictions_to_gt(pred_text, pred_bboxes, gt_text, gt_bboxes, confiden
             new_gt_bboxes.append(merge_bboxes([gt_bboxes[i] for i in idxs_gt]))
         else:
             raise RuntimeError(
-                f"cannot resolve matching: gt: {[gt_text[i] for i in idxs_gt]}, pred {[pred_text[i] for i in idxs_pred]}")
+                f"cannot resolve matching: gt, pred: {[(gt_text[i], pred_text[j]) for i, j in zip(idxs_gt, idxs_pred)]}")
 
     missed_gts = list(set(range(len(gt_text))) - set(sum([t[1] for t in merged_matchings], [])))
     eval_stats["missed"] = len(missed_gts)
@@ -114,11 +116,10 @@ def match_predictions_to_gt(pred_text, pred_bboxes, gt_text, gt_bboxes, confiden
             new_confidence.append(confidences[pred_idx])
         new_gt_text.append(None)
         new_gt_bboxes.append(None)
-    return new_pred_text, new_pred_bboxes, new_gt_text, new_gt_bboxes,new_confidence, eval_stats
+    return new_pred_text, new_pred_bboxes, new_gt_text, new_gt_bboxes, new_confidence, eval_stats
 
 
 if __name__ == "__main__":
-
     text_a = ["Perfect match", "Slight mismatch", "Split Match", "Non existent", "MergedM", "atch"]
     text_b = ["Perfect match", "Slight mismatch", "SplitM", " atch", "Merged Match"]
     bboxes_a = [
@@ -136,11 +137,14 @@ if __name__ == "__main__":
         (170, 150, 200, 220),  # Second part of the split box
         (495, 545, 605, 655)  # Merged version of two boxes in A
     ]
-    confidences = [a / 10 for a in range(9, 3,-1)]
+    confidences = [a / 10 for a in range(9, 3, -1)]
 
-    new_text_a, new_bboxes_a, new_text_b, new_bboxes_b,new_confidence, stats = match_predictions_to_gt(text_a, bboxes_a, text_b, bboxes_b,
-                                                                                        confidences=confidences,
-                                                                                        intersect_threshold=0.9)
+    new_text_a, new_bboxes_a, new_text_b, new_bboxes_b, new_confidence, stats = match_predictions_to_gt(text_a,
+                                                                                                        bboxes_a,
+                                                                                                        text_b,
+                                                                                                        bboxes_b,
+                                                                                                        confidences=confidences,
+                                                                                                        intersect_threshold=0.9)
     print(f"stats: {stats}")
     print(f"text a: {new_text_a}")
     print(f"text b: {new_text_b}")
