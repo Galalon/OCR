@@ -41,7 +41,7 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
         page = doc[page_number]
 
         # 1. Extract full text and split it with delimiters
-        full_text = page.get_text("text")
+        full_text = page.get_text("text", flags=fitz.TEXT_INHIBIT_SPACES)
         expected_words = [clean_text(word) for word in delimiters_pattern.split(full_text) if word.strip()]
 
         # 2. Extract words with bounding boxes
@@ -105,6 +105,28 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
                 f"Missing expected words on page {page_number + 1}: "
                 f"Remaining: {expected_words[expected_index:]}"
             )
+        merged_texts = []
+        merged_bbox = []
+        prev_word = None
+        prev_bbox = None
+        merge_bboxes = lambda x, y: (min(x[0], y[0]), min(x[1], y[1]), max(x[2], y[2]), max(x[3], y[3]))
+        for curr_word, curr_bbox in zip(texts, bboxes):
+            if (prev_word is None) and (prev_bbox is None):
+                prev_word = curr_word
+                prev_bbox = curr_bbox
+            elif prev_bbox[0] - curr_bbox[2] == 0 and max(prev_bbox[1], curr_bbox[1]) < min(prev_bbox[3], curr_bbox[
+                3]):  # words in the same line with 0 difference between bboxes -> need to be merged
+                prev_word += curr_word
+                prev_bbox = merge_bboxes(prev_bbox, curr_bbox)
+            else: #new_bbox - push to lists
+                merged_texts.append(prev_word)
+                merged_bbox.append(prev_bbox)
+                prev_bbox = curr_bbox
+                prev_word = curr_word
+
+        merged_texts.append(prev_word)
+        merged_bbox.append(prev_bbox)
+
         # Save page image and data
         img_path = f"{os.path.join(output_dir, pdf_name)}_page_{page_number + 1}.png"
         pix = page.get_pixmap(dpi=dpi)
@@ -128,62 +150,11 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
     return
 
 
-def process_pdf_to_images_and_data_(pdf_file, dpi=300, output_dir="output"):
-    pdf_name = pdf_file.split('/')[-1].removesuffix('.pdf')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    doc = fitz.open(pdf_file)
-    scaling_factor = dpi / 72  # Convert from PDF points (1/72 inch) to the desired DPI
-
-    output_data = {}
-
-    for page_number in range(len(doc)):
-        page = doc[page_number]
-
-        # 1. Render the page as an image
-        pix = page.get_pixmap(dpi=dpi)
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-
-        # Save the image
-        img_path = f"{output_dir}/{pdf_name}_page_{page_number + 1}.png"
-
-        img.save(img_path)
-
-        # 2. Extract words and map BBoxes to the image coordinate system
-        words = page.get_text("words")  # Each word is a tuple (x0, y0, x1, y1, "word", ...)
-        bboxes = []
-        texts = []
-
-        for word in words:
-            x0, y0, x1, y1, text = word[:5]
-
-            # Map the BBoxes to the image coordinate system
-            x0_img = int(x0 * scaling_factor)
-            y0_img = int(y0 * scaling_factor)
-            x1_img = int(x1 * scaling_factor)
-            y1_img = int(y1 * scaling_factor)
-
-            bboxes.append((x0_img, y0_img, x1_img, y1_img))
-            texts.append(text)
-
-        # Save the page data
-        output_data[f"page_{page_number + 1}"] = {
-            "image_path": img_path,
-            "bboxes": bboxes,
-            "words": texts,
-        }
-
-    # 3. Save the JSON file
-    file_name = pdf_file.split('/')[-1].removesuffix('.pdf')
-    json_path = f"{output_dir}/{file_name}_output_data.json"
-    with open(json_path, "w", encoding="utf-8") as json_file:
-        json.dump(output_data, json_file, indent=4, ensure_ascii=False)
-
-    print(f"Processing completed. Images saved to '{output_dir}', and data saved to '{json_path}'.")
-
-
 if __name__ == "__main__":
-    pdf_path = r"D:/Projects/OCR/data/pkudot.pdf"
-    output_dir = r"D:/Projects/OCR/data/pkudot_test_data_example"
+
+    pdf_path = r"C:\Users\sgala\Downloads\pkudot.pdf"
+    output_dir = r"C:\Users\sgala\OCR\tesseract_test_data_example"
+
     # Example Usage
-    process_pdf_to_images_and_data(pdf_path, dpi=300, output_dir=output_dir)
+    out = process_pdf_to_images_and_data(pdf_path, dpi=300, output_dir=output_dir)
+    print(out)
