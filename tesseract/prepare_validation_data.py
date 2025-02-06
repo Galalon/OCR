@@ -7,7 +7,7 @@ import fitz
 import os
 import re
 from PIL import Image
-
+from pathlib import Path
 import unicodedata
 
 
@@ -26,7 +26,7 @@ def clean_text(text):
 
 
 def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delimiters=[" ", "\n"]):
-    pdf_name = pdf_file.split('\\')[-1].removesuffix('.pdf')
+    pdf_name = Path(pdf_file).name.removesuffix('.pdf')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -128,7 +128,7 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
         merged_bbox.append(prev_bbox)
 
         # Save page image and data
-        img_path = f"{output_dir}/{pdf_name}_page_{page_number + 1}.png"
+        img_path = f"{os.path.join(output_dir, pdf_name)}_page_{page_number + 1}.png"
         pix = page.get_pixmap(dpi=dpi)
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         img.save(img_path)
@@ -141,7 +141,7 @@ def process_pdf_to_images_and_data(pdf_file, dpi=300, output_dir="output", delim
         }
 
     # 3. Save the JSON file
-    file_name = pdf_file.split('\\')[-1].removesuffix('.pdf')
+    file_name = Path(pdf_file).name.removesuffix('.pdf')
     json_path = f"{output_dir}/{file_name}_output_data.json"
     with open(json_path, "w", encoding="utf-8") as json_file:
         json.dump(output_data, json_file, indent=4, ensure_ascii=False)

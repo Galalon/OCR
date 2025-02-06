@@ -29,7 +29,8 @@ def pdf_to_train_images(pdf_path, output_dir, augment=False, dpi=300):
     pdf_name = pdf_path.split('\\')[-1].removesuffix('.pdf')
     scale = dpi / 72  # Scaling factor
     os.makedirs(output_dir, exist_ok=True)
-    images = convert_from_path(pdf_path, dpi=dpi,poppler_path=r'C:\Program Files\Popler\poppler-24.08.0\Library\bin')
+    print(pdf_path)
+    images = convert_from_path(pdf_path, dpi=dpi, poppler_path=r"D:\Programs\poppler-24.08.0\Library\bin")
 
     for page_num, page_image in enumerate(images):
         # Convert PIL image to OpenCV format
@@ -46,6 +47,8 @@ def pdf_to_train_images(pdf_path, output_dir, augment=False, dpi=300):
             for line in block.get("lines", []):
                 # Combine spans to form the full line text
                 line_text = " ".join(span["text"] for span in line["spans"])
+                if line_text.isspace() or line_text == '':
+                    continue
                 bbox = line["bbox"]  # (x0, y0, x1, y1) in PDF coordinate space
 
                 # Convert bbox to image pixel space
