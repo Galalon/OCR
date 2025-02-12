@@ -7,7 +7,7 @@ import fitz  # PyMuPDF
 
 
 # Augmentation functions
-def augment_image(image):
+def augment_image(image, ratio_exp_range=[-4, -1]):
     """Apply random augmentations to an image."""
     # Random rotation
     # angle = random.randint(-10, 10)
@@ -16,21 +16,27 @@ def augment_image(image):
     # image = cv2.warpAffine(image, rotation_matrix, (w, h), borderMode=cv2.BORDER_REPLICATE)
 
     # Random brightness/contrast
-    alpha = random.uniform(0.8, 1.2)  # Contrast
-    beta = random.randint(-20, 20)  # Brightness
-    image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    # alpha = random.uniform(0.8, 1.2)  # Contrast
+    # beta = random.randint(-20, 20)  # Brightness
+    # image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    ratio = 10 ** np.random.uniform(-4, -1)
+    n_pixels = int(ratio * np.prod(image.shape))
+    ny, nx = np.random.randint(image.shape[0], size=n_pixels), np.random.randint(image.shape[1], size=n_pixels)
+    image[ny, nx] = 0
+    n_pixels = int(ratio * np.prod(image.shape))
+    ny, nx = np.random.randint(image.shape[0], size=n_pixels), np.random.randint(image.shape[1], size=n_pixels)
+    image[ny, nx] = 255
 
     return image
 
 
 # PDF to dataset
-def pdf_to_train_images(pdf_path, output_dir, augment=False, dpi=300):
+def pdf_to_train_images(pdf_path, output_dir, augment=False,augment_prob=0.5, dpi=300):
     """Convert a PDF to a dataset of images and texts."""
     pdf_name = pdf_path.split('\\')[-1].removesuffix('.pdf')
     scale = dpi / 72  # Scaling factor
     os.makedirs(output_dir, exist_ok=True)
-    print(pdf_path)
-    images = convert_from_path(pdf_path, dpi=dpi, poppler_path=r"D:\Programs\poppler-24.08.0\Library\bin")
+    images = convert_from_path(pdf_path, dpi=dpi, poppler_path=r'C:\Program Files\Popler\poppler-24.08.0\Library\bin')
 
     for page_num, page_image in enumerate(images):
         # Convert PIL image to OpenCV format
@@ -59,24 +65,23 @@ def pdf_to_train_images(pdf_path, output_dir, augment=False, dpi=300):
 
                 # Save the line image and text
                 line_id = f"{pdf_name}_page{page_num + 1}_line{n}"
+                to_augment = np.random.rand()<augment_prob
                 line_image_path = os.path.join(output_dir, f"{line_id}.png")
                 line_text_path = os.path.join(output_dir, f"{line_id}.gt.txt")
                 n += 1
 
                 if line_image.size > 0:  # Avoid saving empty crops
-                    cv2.imwrite(line_image_path, line_image)
-                    print(f'created image {line_image_path}')
+
                     with open(line_text_path, "w", encoding="utf-8") as text_file:
                         text_file.write(line_text)
 
-                # Optionally augment the image
-                if augment and line_image.size > 0:
-                    augmented_image = augment_image(line_image)
-                    augmented_image_path = os.path.join(output_dir, f"{line_id}_augmented.png")
-                    cv2.imwrite(augmented_image_path, augmented_image)
+                    # Optionally augment the image
+                    if to_augment:
+                        line_image = augment_image(line_image)
+                    cv2.imwrite(line_image_path, line_image)
+                    print(f'created image {line_image_path}')
 
         pdf_document.close()
-
 
 
 if __name__ == "__main__":
