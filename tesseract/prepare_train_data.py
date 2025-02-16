@@ -4,34 +4,11 @@ import cv2
 import numpy as np
 from pdf2image import convert_from_path
 import fitz  # PyMuPDF
-
-
-# Augmentation functions
-def augment_image(image, ratio_exp_range=[-4, -1]):
-    """Apply random augmentations to an image."""
-    # Random rotation
-    # angle = random.randint(-10, 10)
-    # h, w = image.shape[:2]
-    # rotation_matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1)
-    # image = cv2.warpAffine(image, rotation_matrix, (w, h), borderMode=cv2.BORDER_REPLICATE)
-
-    # Random brightness/contrast
-    # alpha = random.uniform(0.8, 1.2)  # Contrast
-    # beta = random.randint(-20, 20)  # Brightness
-    # image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
-    ratio = 10 ** np.random.uniform(-4, -1)
-    n_pixels = int(ratio * np.prod(image.shape))
-    ny, nx = np.random.randint(image.shape[0], size=n_pixels), np.random.randint(image.shape[1], size=n_pixels)
-    image[ny, nx] = 0
-    n_pixels = int(ratio * np.prod(image.shape))
-    ny, nx = np.random.randint(image.shape[0], size=n_pixels), np.random.randint(image.shape[1], size=n_pixels)
-    image[ny, nx] = 255
-
-    return image
+from tesseract.augmentations import augment_text_image, AugmentationConfig
 
 
 # PDF to dataset
-def pdf_to_train_images(pdf_path, output_dir, augment=False,augment_prob=0.5, dpi=300):
+def pdf_to_train_images(pdf_path, output_dir,aug_config:AugmentationConfig , dpi=300):
     """Convert a PDF to a dataset of images and texts."""
     pdf_name = pdf_path.split('\\')[-1].removesuffix('.pdf')
     scale = dpi / 72  # Scaling factor
@@ -65,21 +42,19 @@ def pdf_to_train_images(pdf_path, output_dir, augment=False,augment_prob=0.5, dp
 
                 # Save the line image and text
                 line_id = f"{pdf_name}_page{page_num + 1}_line{n}"
-                to_augment = np.random.rand()<augment_prob
                 line_image_path = os.path.join(output_dir, f"{line_id}.png")
                 line_text_path = os.path.join(output_dir, f"{line_id}.gt.txt")
                 n += 1
 
                 if line_image.size > 0:  # Avoid saving empty crops
-
                     with open(line_text_path, "w", encoding="utf-8") as text_file:
                         text_file.write(line_text)
 
                     # Optionally augment the image
-                    if to_augment:
-                        line_image = augment_image(line_image)
+
+                    line_image = augment_text_image(line_image, aug_config)
                     cv2.imwrite(line_image_path, line_image)
-                    print(f'created image {line_image_path}')
+                    print(f'Created image {line_image_path}')
 
         pdf_document.close()
 
