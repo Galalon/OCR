@@ -9,7 +9,6 @@ def resize_image_constant_median_size(image, target_median_size=100, max_resize=
     th, _ = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     binary = (gray < th).astype(np.uint8)
     _, _, stats, _ = cv2.connectedComponentsWithStats(binary)
-    cc_sizes
     median_size = np.median(stats[:, 4])
 
     resize_ratio = min(max(target_median_size / median_size, 1), max_resize)
